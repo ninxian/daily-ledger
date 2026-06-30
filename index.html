@@ -194,6 +194,8 @@
       display: block;
       width: 100%;
       max-width: 100%;
+      min-width: 0;
+      inline-size: 100%;
       min-height: 44px;
       border: 1px solid #efd1da;
       border-radius: 12px;
@@ -206,6 +208,20 @@
     .field input:focus {
       border-color: var(--pink);
       box-shadow: 0 0 0 3px rgba(212, 88, 131, .14);
+    }
+
+    .field input[type="date"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      text-align: left;
+    }
+
+    .field input[type="date"]::-webkit-date-and-time-value {
+      text-align: left;
+      min-width: 0;
     }
 
     .btn-row {
@@ -311,7 +327,8 @@
       .badge { width: 92px; }
       .body { grid-template-columns: minmax(0, 1fr); padding: 12px; min-width: 0; width: 100%; }
       .form-grid, .field, .panel, .shell { min-width: 0; max-width: 100%; }
-      .field input { width: 100%; min-width: 0; }
+      .field { overflow: hidden; }
+      .field input { width: 100%; min-width: 0; max-width: 100%; inline-size: 100%; }
       .table-wrap { width: 100%; max-width: calc(100vw - 44px); }
       .stats { grid-template-columns: 1fr; }
       .btn-row { grid-template-columns: 1fr; }
@@ -431,7 +448,13 @@
     let sessionUser = null;
     let selectedMonth = today().slice(0, 7);
 
-    function today() { return new Date().toISOString().slice(0, 10); }
+    function today() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      return year + "-" + month + "-" + day;
+    }
     function money(value) { return new Intl.NumberFormat("zh-TW", { style: "currency", currency: "TWD", maximumFractionDigits: 0 }).format(value || 0); }
     function number(value) { return new Intl.NumberFormat("zh-TW", { maximumFractionDigits: 0 }).format(value || 0); }
     function weekday(dateText) { const day = new Date(dateText + "T00:00:00").getDay(); return ["週日", "週一", "週二", "週三", "週四", "週五", "週六"][day]; }
@@ -440,10 +463,14 @@
     function accountToEmail() { return accountInput.value.trim() + ACCOUNT_SUFFIX; }
     function emailToAccount(email) { return (email || "").replace(ACCOUNT_SUFFIX, ""); }
 
+    function fillTodayDate() {
+      if (!editId.value) dateInput.value = today();
+    }
+
     function resetForm() {
       form.reset();
       editId.value = "";
-      dateInput.value = today();
+      fillTodayDate();
       formTitle.textContent = "新增今日紀錄";
       submitButton.textContent = "儲存";
     }
@@ -525,6 +552,7 @@
       sessionUser = data.user;
       setStatus("");
       updateAuthUI();
+      fillTodayDate();
       await loadEntries();
     });
 
@@ -601,6 +629,12 @@
     });
 
     cancelButton.addEventListener("click", resetForm);
+
+    window.addEventListener("pageshow", fillTodayDate);
+    window.addEventListener("focus", fillTodayDate);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) fillTodayDate();
+    });
 
     async function init() {
       resetForm();
