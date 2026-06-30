@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>每日業績小帳本</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #35252b;
+      --muted: #76636c;
+      --line: #f1d7df;
+      --pink: #d45883;
+      --pink-dark: #a93d63;
+      --green: #26765f;
+      --orange: #b74e31;
+      --blue: #3f65a8;
+      --gold: #8a6b1e;
+      --bg: #fff8fb;
+      font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: #f7f1f4; color: var(--ink); line-height: 1.5; }
+    button, input { font: inherit; }
+    .app { width: min(1180px, 100%); margin: 0 auto; padding: 18px; }
+    .shell { overflow: hidden; border: 1px solid #f3d8e4; border-radius: 18px; background: var(--bg); box-shadow: 0 18px 44px rgba(109, 65, 88, .14); }
+    .hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: center; padding: 24px; background: linear-gradient(135deg, #ffe8f0 0%, #e8f7f3 55%, #fff5d8 100%); border-bottom: 1px solid #f3d8e4; }
+    h1, h2, p { margin-top: 0; }
+    h1 { margin-bottom: 8px; font-size: clamp(28px, 5vw, 42px); letter-spacing: 0; }
+    .hero p { margin-bottom: 0; color: #725867; font-weight: 700; }
+    .badge { display: grid; place-items: center; width: 112px; aspect-ratio: 1; border: 2px dashed #e69ab5; border-radius: 50%; background: rgba(255, 255, 255, .72); color: #9a4161; text-align: center; font-weight: 900; }
+    .body { display: grid; grid-template-columns: 330px 1fr; gap: 18px; padding: 20px; }
+    .panel { border: 1px solid var(--line); border-radius: 16px; background: #fff; padding: 18px; box-shadow: 0 8px 20px rgba(150, 91, 120, .08); }
+    h2 { margin-bottom: 14px; font-size: 18px; letter-spacing: 0; }
+    .auth-panel { margin-bottom: 14px; }
+    .auth-grid, .form-grid { display: grid; gap: 12px; }
+    .field label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 900; }
+    .field input { width: 100%; min-height: 44px; border: 1px solid #efd1da; border-radius: 12px; padding: 10px 12px; background: #fffafd; color: #2d2025; outline: none; }
+    .field input:focus { border-color: #d45883; box-shadow: 0 0 0 3px rgba(212, 88, 131, .14); }
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+    .btn { min-height: 44px; border: 0; border-radius: 14px; padding: 10px 14px; cursor: pointer; font-weight: 900; white-space: nowrap; }
+    .btn.primary { background: var(--pink); color: #fff; }
+    .btn.primary:hover { background: var(--pink-dark); }
+    .btn.secondary { background: #e7f5f0; color: #2f6658; }
+    .btn.danger { background: #fff0df; color: #9b4e22; }
+    .btn:disabled { cursor: not-allowed; opacity: .55; }
+    .status { min-height: 24px; margin: 10px 0 0; color: #8a4760; font-size: 14px; font-weight: 800; }
+    .userbar { display: none; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; color: #725867; font-size: 14px; font-weight: 900; }
+    .userbar.show { display: flex; }
+    .main-area.locked { opacity: .45; pointer-events: none; }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .stat { min-height: 108px; border: 1px solid var(--line); border-radius: 16px; background: #fff; padding: 16px; }
+    .stat:nth-child(1) { background: #f0fbf7; }
+    .stat:nth-child(2) { background: #fff4ec; }
+    .stat:nth-child(3) { background: #eef4ff; }
+    .stat:nth-child(4) { background: #fff9dc; }
+    .stat:nth-child(5) { background: #fff0f6; }
+    .stat:nth-child(6) { background: #effaf5; }
+    .stat:nth-child(7) { background: #f6f1ff; }
+    .stat-label { color: var(--muted); font-size: 13px; font-weight: 900; }
+    .stat-number { margin: 4px 0 0; font-size: clamp(22px, 4vw, 32px); font-weight: 900; letter-spacing: 0; }
+    .stat.sales .stat-number { color: var(--green); }
+    .stat.waste .stat-number { color: var(--orange); }
+    .stat.visitors .stat-number { color: var(--blue); }
+    .stat.rate .stat-number { color: var(--gold); }
+    .list-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 12px; }
+    .table-wrap { overflow-x: auto; border: 1px solid #f0d6de; border-radius: 14px; background: #fff; }
+    table { width: 100%; min-width: 760px; border-collapse: collapse; }
+    th, td { padding: 12px; border-bottom: 1px solid #f4e2e8; text-align: left; vertical-align: middle; }
+    th { background: #fff7fa; color: #725867; font-size: 13px; font-weight: 900; }
+    tbody tr:hover { background: #fffafd; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .num { font-weight: 900; white-space: nowrap; }
+    .sales-text { color: var(--green); }
+    .waste-text { color: var(--orange); }
+    .visitor-text { color: var(--blue); }
+    .actions { display: flex; gap: 7px; align-items: center; }
+    .mini { min-height: 34px; border: 1px solid transparent; border-radius: 10px; padding: 6px 10px; cursor: pointer; font-size: 13px; font-weight: 900; }
+    .mini.edit { background: #e8f1ff; color: #1f5caa; }
+    .mini.delete { background: #ffecea; color: #a5342d; }
+    .empty { display: none; border: 1px dashed #e7b8c8; border-radius: 14px; padding: 18px; background: #fffafd; color: #7b6170; text-align: center; font-weight: 800; }
+    .empty.show { display: block; }
+    .setup-note { margin-top: 12px; border-radius: 12px; padding: 12px; background: #fff8e8; color: #755719; font-size: 14px; font-weight: 800; }
+    @media (max-width: 980px) { .body { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 640px) { .app { padding: 10px; } .shell { border-radius: 12px; } .hero { grid-template-columns: 1fr; padding: 18px; } .badge { width: 92px; } .body { padding: 12px; } .stats { grid-template-columns: 1fr; } .btn-row { grid-template-columns: 1fr; } .btn { width: 100%; } .list-head { display: grid; } .userbar.show { display: grid; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="shell" aria-labelledby="page-title">
+      <header class="hero">
+        <div>
+          <h1 id="page-title">每日小帳本</h1>
+          <p>登入後記錄每天業績、報廢成本與來客數，資料會儲存在 Supabase。</p>
+        </div>
+        <div class="badge"><span id="entryCount">0 筆<br>資料</span></div>
+      </header>
+
+      <div class="body">
+        <aside>
+          <section class="panel auth-panel" id="authPanel">
+            <h2>登入驗證</h2>
+            <form class="auth-grid" id="authForm">
+              <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="email" required></div>
+              <div class="field"><label for="password">密碼</label><input id="password" type="password" autocomplete="current-password" minlength="6" required></div>
+              <div class="btn-row">
+                <button class="btn primary" id="loginButton" type="submit">登入</button>
+                <button class="btn secondary" id="signupButton" type="button">註冊</button>
+              </div>
+            </form>
+            <p class="status" id="authStatus"></p>
+            <div class="setup-note" id="setupNote">請先在程式碼填入 Supabase URL 與 anon key，並執行 supabase-schema.sql。</div>
+          </section>
+
+          <section class="panel main-area locked" id="formPanel">
+            <h2 id="formTitle">新增今日紀錄</h2>
+            <form class="form-grid" id="entryForm">
+              <input type="hidden" id="editId">
+              <div class="field"><label for="date">日期</label><input id="date" type="date" required></div>
+              <div class="field"><label for="sales">當日業績</label><input id="sales" type="number" min="0" step="1" inputmode="numeric" required></div>
+              <div class="field"><label for="waste">當日報廢成本</label><input id="waste" type="number" min="0" step="1" inputmode="numeric" required></div>
+              <div class="field"><label for="visitors">每日來客數</label><input id="visitors" type="number" min="0" step="1" inputmode="numeric" required></div>
+              <div class="btn-row"><button class="btn primary" id="submitButton" type="submit">存下這一天</button><button class="btn secondary" id="cancelButton" type="button">取消編輯</button></div>
+            </form>
+          </section>
+        </aside>
+
+        <div class="main-area locked" id="mainArea">
+          <div class="userbar" id="userbar"><span id="currentUser"></span><button class="btn secondary" id="logoutButton" type="button">登出</button></div>
+          <section class="stats" aria-label="統計卡片">
+            <article class="stat sales"><div class="stat-label">總業績</div><p class="stat-number" id="totalSales">$0</p></article>
+            <article class="stat waste"><div class="stat-label">總報廢成本</div><p class="stat-number" id="totalWaste">$0</p></article>
+            <article class="stat visitors"><div class="stat-label">總來客數</div><p class="stat-number" id="totalVisitors">0</p></article>
+            <article class="stat rate"><div class="stat-label">報廢率</div><p class="stat-number" id="wasteRate">0%</p></article>
+            <article class="stat sales"><div class="stat-label">平均業績</div><p class="stat-number" id="avgSales">$0</p></article>
+            <article class="stat waste"><div class="stat-label">平均報廢成本</div><p class="stat-number" id="avgWaste">$0</p></article>
+            <article class="stat visitors"><div class="stat-label">平均來客數</div><p class="stat-number" id="avgVisitors">0</p></article>
+          </section>
+
+          <section class="panel">
+            <div class="list-head"><h2>每日資料列表</h2><button class="btn danger" id="clearAll" type="button">清空全部資料</button></div>
+            <div class="empty" id="emptyState">還沒有資料，先新增今天的紀錄吧。</div>
+            <div class="table-wrap">
+              <table aria-label="每日資料列表">
+                <thead><tr><th>日期</th><th>星期</th><th>當日業績</th><th>報廢成本</th><th>來客數</th><th>報廢率</th><th>操作</th></tr></thead>
+                <tbody id="tableBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const SUPABASE_URL = "https://snbhjamszmbpinipqjay.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_A_SZMSwqxmJSQYTrFP0TFA_KzFCkJtO";
+    const TABLE_NAME = "daily_entries";
+    const isConfigured = !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON_KEY.includes("YOUR-SUPABASE");
+    const supabaseClient = isConfigured ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+    const authForm = document.getElementById("authForm");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const signupButton = document.getElementById("signupButton");
+    const logoutButton = document.getElementById("logoutButton");
+    const authStatus = document.getElementById("authStatus");
+    const setupNote = document.getElementById("setupNote");
+    const userbar = document.getElementById("userbar");
+    const currentUser = document.getElementById("currentUser");
+    const formPanel = document.getElementById("formPanel");
+    const mainArea = document.getElementById("mainArea");
+    const form = document.getElementById("entryForm");
+    const editId = document.getElementById("editId");
+    const dateInput = document.getElementById("date");
+    const salesInput = document.getElementById("sales");
+    const wasteInput = document.getElementById("waste");
+    const visitorsInput = document.getElementById("visitors");
+    const formTitle = document.getElementById("formTitle");
+    const submitButton = document.getElementById("submitButton");
+    const cancelButton = document.getElementById("cancelButton");
+    const clearAllButton = document.getElementById("clearAll");
+    const tableBody = document.getElementById("tableBody");
+    const emptyState = document.getElementById("emptyState");
+    let entries = [];
+    let sessionUser = null;
+
+    function today() { return new Date().toISOString().slice(0, 10); }
+    function money(value) { return new Intl.NumberFormat("zh-TW", { style: "currency", currency: "TWD", maximumFractionDigits: 0 }).format(value || 0); }
+    function number(value) { return new Intl.NumberFormat("zh-TW", { maximumFractionDigits: 0 }).format(value || 0); }
+    function weekday(dateText) { const day = new Date(dateText + "T00:00:00").getDay(); return ["週日", "週一", "週二", "週三", "週四", "週五", "週六"][day]; }
+    function setStatus(message) { authStatus.textContent = message || ""; }
+    function setLoading(isLoading) { document.querySelectorAll("button").forEach((button) => button.disabled = isLoading); }
+
+    function resetForm() {
+      form.reset();
+      editId.value = "";
+      dateInput.value = today();
+      formTitle.textContent = "新增今日紀錄";
+      submitButton.textContent = "存下這一天";
+    }
+
+    function totals() {
+      const count = entries.length;
+      const totalSales = entries.reduce((sum, item) => sum + Number(item.sales || 0), 0);
+      const totalWaste = entries.reduce((sum, item) => sum + Number(item.waste || 0), 0);
+      const totalVisitors = entries.reduce((sum, item) => sum + Number(item.visitors || 0), 0);
+      return { count, totalSales, totalWaste, totalVisitors, avgSales: count ? totalSales / count : 0, avgWaste: count ? totalWaste / count : 0, avgVisitors: count ? totalVisitors / count : 0, wasteRate: totalSales ? totalWaste / totalSales * 100 : 0 };
+    }
+
+    function renderStats() {
+      const data = totals();
+      document.getElementById("entryCount").innerHTML = number(data.count) + " 筆<br>資料";
+      document.getElementById("totalSales").textContent = money(data.totalSales);
+      document.getElementById("totalWaste").textContent = money(data.totalWaste);
+      document.getElementById("totalVisitors").textContent = number(data.totalVisitors);
+      document.getElementById("avgSales").textContent = money(data.avgSales);
+      document.getElementById("avgWaste").textContent = money(data.avgWaste);
+      document.getElementById("avgVisitors").textContent = number(Math.round(data.avgVisitors));
+      document.getElementById("wasteRate").textContent = data.wasteRate.toFixed(1) + "%";
+    }
+
+    function renderTable() {
+      const sorted = [...entries].sort((a, b) => b.entry_date.localeCompare(a.entry_date));
+      tableBody.innerHTML = sorted.map((item) => {
+        const rowRate = Number(item.sales) ? Number(item.waste) / Number(item.sales) * 100 : 0;
+        return '<tr><td>' + item.entry_date + '</td><td>' + weekday(item.entry_date) + '</td><td class="num sales-text">' + money(item.sales) + '</td><td class="num waste-text">' + money(item.waste) + '</td><td class="num visitor-text">' + number(item.visitors) + ' 人</td><td class="num">' + rowRate.toFixed(1) + '%</td><td><div class="actions"><button class="mini edit" type="button" data-action="edit" data-id="' + item.id + '">編輯</button><button class="mini delete" type="button" data-action="delete" data-id="' + item.id + '">刪除</button></div></td></tr>';
+      }).join("");
+      emptyState.classList.toggle("show", entries.length === 0);
+    }
+
+    function render() { renderStats(); renderTable(); }
+
+    function updateAuthUI() {
+      const loggedIn = Boolean(sessionUser);
+      formPanel.classList.toggle("locked", !loggedIn);
+      mainArea.classList.toggle("locked", !loggedIn);
+      userbar.classList.toggle("show", loggedIn);
+      currentUser.textContent = loggedIn ? "目前登入：" + sessionUser.email : "";
+      setupNote.style.display = isConfigured ? "none" : "block";
+      if (!isConfigured) setStatus("尚未設定 Supabase 連線資訊。");
+    }
+
+    async function loadEntries() {
+      if (!supabaseClient || !sessionUser) { entries = []; render(); return; }
+      setLoading(true);
+      const { data, error } = await supabaseClient.from(TABLE_NAME).select("id, entry_date, sales, waste, visitors, created_at").order("entry_date", { ascending: false });
+      setLoading(false);
+      if (error) { setStatus(error.message); return; }
+      entries = data || [];
+      render();
+    }
+
+    authForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!supabaseClient) return setStatus("請先填入 Supabase URL 與 anon key。");
+      setLoading(true);
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email: emailInput.value, password: passwordInput.value });
+      setLoading(false);
+      if (error) return setStatus(error.message);
+      sessionUser = data.user;
+      setStatus("登入成功。");
+      updateAuthUI();
+      await loadEntries();
+    });
+
+    signupButton.addEventListener("click", async () => {
+      if (!supabaseClient) return setStatus("請先填入 Supabase URL 與 anon key。");
+      setLoading(true);
+      const { data, error } = await supabaseClient.auth.signUp({ email: emailInput.value, password: passwordInput.value });
+      setLoading(false);
+      if (error) return setStatus(error.message);
+      setStatus(data.session ? "註冊並登入成功。" : "註冊成功，請依 Supabase 設定檢查信箱驗證。");
+      sessionUser = data.user || sessionUser;
+      updateAuthUI();
+      await loadEntries();
+    });
+
+    logoutButton.addEventListener("click", async () => {
+      if (supabaseClient) await supabaseClient.auth.signOut();
+      sessionUser = null;
+      entries = [];
+      resetForm();
+      render();
+      updateAuthUI();
+      setStatus("已登出。");
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!supabaseClient || !sessionUser) return setStatus("請先登入。");
+      const payload = { entry_date: dateInput.value, sales: Number(salesInput.value) || 0, waste: Number(wasteInput.value) || 0, visitors: Number(visitorsInput.value) || 0 };
+      setLoading(true);
+      const result = editId.value
+        ? await supabaseClient.from(TABLE_NAME).update(payload).eq("id", editId.value)
+        : await supabaseClient.from(TABLE_NAME).insert(payload);
+      setLoading(false);
+      if (result.error) return setStatus(result.error.message);
+      resetForm();
+      setStatus("資料已儲存。");
+      await loadEntries();
+    });
+
+    tableBody.addEventListener("click", async (event) => {
+      const button = event.target.closest("button[data-action]");
+      if (!button) return;
+      const entry = entries.find((item) => item.id === button.dataset.id);
+      if (!entry) return;
+      if (button.dataset.action === "edit") {
+        editId.value = entry.id;
+        dateInput.value = entry.entry_date;
+        salesInput.value = entry.sales;
+        wasteInput.value = entry.waste;
+        visitorsInput.value = entry.visitors;
+        formTitle.textContent = "編輯每日紀錄";
+        submitButton.textContent = "儲存修改";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+      if (button.dataset.action === "delete") {
+        if (!confirm("確定要刪除這筆資料嗎？")) return;
+        setLoading(true);
+        const { error } = await supabaseClient.from(TABLE_NAME).delete().eq("id", entry.id);
+        setLoading(false);
+        if (error) return setStatus(error.message);
+        resetForm();
+        setStatus("資料已刪除。");
+        await loadEntries();
+      }
+    });
+
+    clearAllButton.addEventListener("click", async () => {
+      if (!entries.length || !supabaseClient) return;
+      if (!confirm("確定要清空全部資料嗎？")) return;
+      setLoading(true);
+      const { error } = await supabaseClient.from(TABLE_NAME).delete().eq("user_id", sessionUser.id);
+      setLoading(false);
+      if (error) return setStatus(error.message);
+      resetForm();
+      setStatus("全部資料已清空。");
+      await loadEntries();
+    });
+
+    cancelButton.addEventListener("click", resetForm);
+
+    async function init() {
+      resetForm();
+      render();
+      updateAuthUI();
+      if (!supabaseClient) return;
+      const { data } = await supabaseClient.auth.getSession();
+      sessionUser = data.session ? data.session.user : null;
+      updateAuthUI();
+      await loadEntries();
+      supabaseClient.auth.onAuthStateChange((_event, session) => {
+        sessionUser = session ? session.user : null;
+        updateAuthUI();
+        loadEntries();
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>
