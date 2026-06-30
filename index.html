@@ -22,6 +22,11 @@
 
     * { box-sizing: border-box; }
 
+    html, body {
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
     body {
       margin: 0;
       min-height: 100vh;
@@ -75,12 +80,14 @@
 
     .app {
       width: min(1180px, 100%);
+      max-width: 100%;
       margin: 0 auto;
       padding: 18px;
     }
 
     .shell {
       overflow: hidden;
+      max-width: 100%;
       border: 1px solid #f3d8e4;
       border-radius: 18px;
       background: var(--bg);
@@ -97,8 +104,16 @@
       border-bottom: 1px solid #f3d8e4;
     }
 
-    .hero h1 {
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
       margin-bottom: 8px;
+    }
+
+    .hero h1 {
+      margin-bottom: 0;
       font-size: clamp(28px, 5vw, 42px);
       letter-spacing: 0;
     }
@@ -110,9 +125,18 @@
     }
 
     .hero-actions {
-      display: grid;
-      gap: 10px;
-      justify-items: end;
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      justify-content: flex-end;
+      min-width: 126px;
+    }
+
+    .logout-top {
+      min-width: 72px;
+      min-height: 38px;
+      padding: 7px 16px;
+      border-radius: 13px;
     }
 
     .badge {
@@ -128,21 +152,17 @@
       font-weight: 900;
     }
 
-    .current-user {
-      color: #8b6073;
-      font-size: 13px;
-      font-weight: 900;
-      text-align: right;
-    }
 
     .body {
       display: grid;
-      grid-template-columns: 330px 1fr;
+      grid-template-columns: minmax(0, 330px) minmax(0, 1fr);
       gap: 18px;
       padding: 20px;
     }
 
     .panel {
+      min-width: 0;
+      max-width: 100%;
       border: 1px solid var(--line);
       border-radius: 16px;
       background: #fff;
@@ -171,7 +191,9 @@
     }
 
     .field input {
+      display: block;
       width: 100%;
+      max-width: 100%;
       min-height: 44px;
       border: 1px solid #efd1da;
       border-radius: 12px;
@@ -206,6 +228,8 @@
     .btn.primary { background: var(--pink); color: #fff; }
     .btn.primary:hover { background: var(--pink-dark); }
     .btn.secondary { background: #e7f5f0; color: #2f6658; }
+    .logout-top { background: var(--pink); color: #fff; box-shadow: 0 8px 18px rgba(212, 88, 131, .16); }
+    .logout-top:hover { background: var(--pink-dark); }
     .btn.danger { background: #fff0df; color: #9b4e22; }
     .btn:disabled { cursor: not-allowed; opacity: .55; }
     .status { min-height: 24px; margin: 10px 0 0; color: #9b4164; font-size: 14px; font-weight: 800; }
@@ -238,8 +262,8 @@
     .stat.visitors .stat-number { color: var(--blue); }
 
     .list-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 12px; }
-    .table-wrap { overflow-x: auto; border: 1px solid #f0d6de; border-radius: 14px; background: #fff; }
-    table { width: 100%; min-width: 690px; border-collapse: collapse; }
+    .table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid #f0d6de; border-radius: 14px; background: #fff; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; min-width: 620px; border-collapse: collapse; }
     th, td { padding: 12px; border-bottom: 1px solid #f4e2e8; text-align: left; vertical-align: middle; }
     th { background: #fff7fa; color: #725867; font-size: 13px; font-weight: 900; }
     tbody tr:hover { background: #fffafd; }
@@ -264,16 +288,19 @@
       .login-screen { padding: 10px; }
       .login-card { padding: 20px; border-radius: 14px; }
       .login-card::before { margin: -20px -20px 18px; border-radius: 14px 14px 0 0; }
-      .app { padding: 10px; }
+      .app { width: 100%; padding: 10px; overflow-x: hidden; }
       .shell { border-radius: 12px; }
       .hero { grid-template-columns: 1fr; padding: 18px; }
-      .hero-actions { justify-items: start; }
-      .current-user { text-align: left; }
+      .hero-actions { justify-content: flex-start; width: 100%; min-width: 0; }
+      .logout-top { width: auto; min-width: 72px; }
       .badge { width: 92px; }
-      .body { padding: 12px; }
+      .body { grid-template-columns: minmax(0, 1fr); padding: 12px; min-width: 0; width: 100%; }
+      .form-grid, .field, .panel, .shell { min-width: 0; max-width: 100%; }
+      .field input { width: 100%; min-width: 0; }
+      .table-wrap { width: 100%; max-width: calc(100vw - 44px); }
       .stats { grid-template-columns: 1fr; }
       .btn-row { grid-template-columns: 1fr; }
-      .btn { width: 100%; }
+      .btn:not(.logout-top) { width: 100%; }
       .list-head { display: grid; }
     }
   </style>
@@ -288,7 +315,7 @@
           <label for="account">帳號</label>
           <div class="input-with-suffix">
             <input id="account" type="text" autocomplete="username" placeholder="admin" required>
-            <span class="suffix">@daily.edger</span>
+            <span class="suffix">@daily.ledger</span>
           </div>
         </div>
         <div class="field">
@@ -304,14 +331,15 @@
   <main class="app hidden" id="app">
     <section class="shell" aria-label="每日業績管理">
       <header class="hero">
-        <div>
-          <h1>每日小帳本</h1>
-          <p>記錄每天業績、報廢成本與來客數，資料會儲存在 Supabase。</p>
+        <div class="hero-copy">
+          <div class="title-row">
+            <h1>每日小帳本</h1>
+            <button class="btn secondary logout-top" id="logoutButton" type="button">登出</button>
+          </div>
+          <p>記錄每天業績、報廢成本與來客數。</p>
         </div>
         <div class="hero-actions">
           <div class="badge"><span id="entryCount">0 筆<br>資料</span></div>
-          <div class="current-user" id="currentUser"></div>
-          <button class="btn secondary" id="logoutButton" type="button">登出</button>
         </div>
       </header>
 
@@ -323,8 +351,8 @@
             <div class="field"><label for="date">日期</label><input id="date" type="date" required></div>
             <div class="field"><label for="sales">當日業績</label><input id="sales" type="number" min="0" step="1" inputmode="numeric" required></div>
             <div class="field"><label for="waste">當日報廢成本</label><input id="waste" type="number" min="0" step="1" inputmode="numeric" required></div>
-            <div class="field"><label for="visitors">每日來客數</label><input id="visitors" type="number" min="0" step="1" inputmode="numeric" required></div>
-            <div class="btn-row"><button class="btn primary" id="submitButton" type="submit">存下這一天</button><button class="btn secondary" id="cancelButton" type="button">取消編輯</button></div>
+            <div class="field"><label for="visitors">當日來客數</label><input id="visitors" type="number" min="0" step="1" inputmode="numeric" required></div>
+            <div class="btn-row"><button class="btn primary" id="submitButton" type="submit">儲存</button><button class="btn secondary" id="cancelButton" type="button">取消編輯</button></div>
           </form>
         </aside>
 
@@ -343,7 +371,7 @@
             <div class="empty" id="emptyState">還沒有資料，先新增今天的紀錄吧。</div>
             <div class="table-wrap">
               <table aria-label="每日資料列表">
-                <thead><tr><th>日期</th><th>星期</th><th>當日業績</th><th>報廢成本</th><th>來客數</th><th>操作</th></tr></thead>
+                <thead><tr><th>日期</th><th>當日業績</th><th>報廢成本</th><th>來客數</th><th>操作</th></tr></thead>
                 <tbody id="tableBody"></tbody>
               </table>
             </div>
@@ -357,7 +385,7 @@
     const SUPABASE_URL = "https://snbhjamszmbpinipqjay.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_A_SZMSwqxmJSQYTrFP0TFA_KzFCkJtO";
     const TABLE_NAME = "daily_entries";
-    const ACCOUNT_SUFFIX = "@daily.edger";
+    const ACCOUNT_SUFFIX = "@daily.ledger";
     const isConfigured = !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON_KEY.includes("YOUR-SUPABASE");
     const supabaseClient = isConfigured ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -368,7 +396,6 @@
     const passwordInput = document.getElementById("password");
     const logoutButton = document.getElementById("logoutButton");
     const authStatus = document.getElementById("authStatus");
-    const currentUser = document.getElementById("currentUser");
     const form = document.getElementById("entryForm");
     const editId = document.getElementById("editId");
     const dateInput = document.getElementById("date");
@@ -398,7 +425,7 @@
       editId.value = "";
       dateInput.value = today();
       formTitle.textContent = "新增今日紀錄";
-      submitButton.textContent = "存下這一天";
+      submitButton.textContent = "儲存";
     }
 
     function totals() {
@@ -423,7 +450,7 @@
     function renderTable() {
       const sorted = [...entries].sort((a, b) => b.entry_date.localeCompare(a.entry_date));
       tableBody.innerHTML = sorted.map((item) => {
-        return '<tr><td>' + item.entry_date + '</td><td>' + weekday(item.entry_date) + '</td><td class="num sales-text">' + money(item.sales) + '</td><td class="num waste-text">' + money(item.waste) + '</td><td class="num visitor-text">' + number(item.visitors) + ' 人</td><td><div class="actions"><button class="mini edit" type="button" data-action="edit" data-id="' + item.id + '">編輯</button><button class="mini delete" type="button" data-action="delete" data-id="' + item.id + '">刪除</button></div></td></tr>';
+        return '<tr><td>' + item.entry_date + ' ' + weekday(item.entry_date).replace('週', '') + '</td><td class="num sales-text">' + money(item.sales) + '</td><td class="num waste-text">' + money(item.waste) + '</td><td class="num visitor-text">' + number(item.visitors) + ' 人</td><td><div class="actions"><button class="mini edit" type="button" data-action="edit" data-id="' + item.id + '">編輯</button><button class="mini delete" type="button" data-action="delete" data-id="' + item.id + '">刪除</button></div></td></tr>';
       }).join("");
       emptyState.classList.toggle("show", entries.length === 0);
     }
@@ -434,7 +461,6 @@
       const loggedIn = Boolean(sessionUser);
       loginScreen.classList.toggle("hidden", loggedIn);
       app.classList.toggle("hidden", !loggedIn);
-      currentUser.textContent = loggedIn ? "目前登入：" + emailToAccount(sessionUser.email) + ACCOUNT_SUFFIX : "";
       if (!isConfigured) setStatus("尚未設定 Supabase 連線資訊。");
     }
 
@@ -475,10 +501,25 @@
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (!supabaseClient || !sessionUser) return setStatus("請先登入。");
-      const payload = { entry_date: dateInput.value, sales: Number(salesInput.value) || 0, waste: Number(wasteInput.value) || 0, visitors: Number(visitorsInput.value) || 0 };
+
+      const payload = {
+        entry_date: dateInput.value,
+        sales: Number(salesInput.value) || 0,
+        waste: Number(wasteInput.value) || 0,
+        visitors: Number(visitorsInput.value) || 0
+      };
+      const sameDateEntry = entries.find((item) => item.entry_date === payload.entry_date && item.id !== editId.value);
+      let targetId = editId.value;
+
+      if (sameDateEntry) {
+        const shouldOverwrite = confirm("這個日期已經有資料了，是否要覆蓋原本資料？");
+        if (!shouldOverwrite) return;
+        targetId = sameDateEntry.id;
+      }
+
       setLoading(true);
-      const result = editId.value
-        ? await supabaseClient.from(TABLE_NAME).update(payload).eq("id", editId.value)
+      const result = targetId
+        ? await supabaseClient.from(TABLE_NAME).update(payload).eq("id", targetId)
         : await supabaseClient.from(TABLE_NAME).insert(payload);
       setLoading(false);
       if (result.error) return setStatus(result.error.message);
