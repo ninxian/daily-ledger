@@ -127,9 +127,10 @@
     .hero-actions {
       display: flex;
       gap: 14px;
-      align-items: center;
+      align-items: start;
       justify-content: flex-end;
       min-width: 126px;
+      align-self: start;
     }
 
     .logout-top {
@@ -321,10 +322,10 @@
       .login-card::before { margin: -20px -20px 18px; border-radius: 14px 14px 0 0; }
       .app { width: 100%; padding: 10px; overflow-x: hidden; }
       .shell { border-radius: 12px; }
-      .hero { grid-template-columns: 1fr; padding: 18px; }
-      .hero-actions { justify-content: flex-start; width: 100%; min-width: 0; }
+      .hero { grid-template-columns: minmax(0, 1fr) auto; padding: 18px; align-items: start; }
+      .hero-actions { justify-content: flex-end; width: auto; min-width: 86px; }
       .logout-top { width: auto; min-width: 72px; }
-      .badge { width: 92px; }
+      .badge { width: 86px; }
       .body { grid-template-columns: minmax(0, 1fr); padding: 12px; min-width: 0; width: 100%; }
       .form-grid, .field, .panel, .shell { min-width: 0; max-width: 100%; }
       .field { overflow: hidden; }
