@@ -275,7 +275,7 @@
     .list-title { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     .list-title h2 { margin: 0; line-height: 1; }
     .list-head .btn { min-height: 38px; padding-top: 7px; padding-bottom: 7px; }
-    .month-filter { height: 38px; min-height: 38px; border: 1px solid #efd1da; border-radius: 12px; padding: 7px 12px; background: #fffafd; color: #5a3d49; font-weight: 900; outline: none; }
+    .month-filter { width: 132px; flex: 0 0 132px; height: 38px; min-height: 38px; border: 1px solid #efd1da; border-radius: 12px; padding: 7px 12px; background: #fffafd; color: #5a3d49; font-weight: 900; outline: none; }
     .month-filter:focus { border-color: var(--pink); box-shadow: 0 0 0 3px rgba(212, 88, 131, .14); }
     .table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid #f0d6de; border-radius: 14px; background: #fff; -webkit-overflow-scrolling: touch; }
     table { width: 100%; min-width: 620px; border-collapse: collapse; }
@@ -319,7 +319,7 @@
       .list-head { display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; }
       .list-title { display: flex; flex: 1 1 auto; min-width: 0; gap: 8px; align-items: center; }
       .list-title h2 { flex: 0 0 auto; font-size: 16px; white-space: nowrap; }
-      .month-filter { flex: 1 1 104px; width: auto; min-width: 96px; height: 36px; padding: 6px 8px; font-size: 13px; }
+      .month-filter { flex: 0 0 118px; width: 118px; min-width: 118px; height: 36px; padding: 6px 8px; font-size: 13px; }
       .list-head .btn.danger { flex: 0 0 auto; width: auto; min-height: 36px; padding: 6px 9px; font-size: 13px; }
     }
   </style>
@@ -448,11 +448,16 @@
       submitButton.textContent = "儲存";
     }
 
+    function currentMonthEntries() {
+      return entries.filter((item) => item.entry_date.slice(0, 7) === selectedMonth);
+    }
+
     function totals() {
-      const count = entries.length;
-      const totalSales = entries.reduce((sum, item) => sum + Number(item.sales || 0), 0);
-      const totalWaste = entries.reduce((sum, item) => sum + Number(item.waste || 0), 0);
-      const totalVisitors = entries.reduce((sum, item) => sum + Number(item.visitors || 0), 0);
+      const scopedEntries = currentMonthEntries();
+      const count = scopedEntries.length;
+      const totalSales = scopedEntries.reduce((sum, item) => sum + Number(item.sales || 0), 0);
+      const totalWaste = scopedEntries.reduce((sum, item) => sum + Number(item.waste || 0), 0);
+      const totalVisitors = scopedEntries.reduce((sum, item) => sum + Number(item.visitors || 0), 0);
       return { count, totalSales, totalWaste, totalVisitors, avgSales: count ? totalSales / count : 0, avgWaste: count ? totalWaste / count : 0, avgVisitors: count ? totalVisitors / count : 0 };
     }
 
@@ -482,7 +487,7 @@
 
     function renderTable() {
       renderMonthFilter();
-      const visibleEntries = entries.filter((item) => item.entry_date.slice(0, 7) === selectedMonth);
+      const visibleEntries = currentMonthEntries();
       const sorted = [...visibleEntries].sort((a, b) => b.entry_date.localeCompare(a.entry_date));
       tableBody.innerHTML = sorted.map((item) => {
         return '<tr><td>' + item.entry_date + ' ' + weekday(item.entry_date).replace('週', '') + '</td><td class="num sales-text">' + money(item.sales) + '</td><td class="num waste-text">' + money(item.waste) + '</td><td class="num visitor-text">' + number(item.visitors) + ' 人</td><td><div class="actions"><button class="mini edit" type="button" data-action="edit" data-id="' + item.id + '">編輯</button><button class="mini delete" type="button" data-action="delete" data-id="' + item.id + '">刪除</button></div></td></tr>';
@@ -592,7 +597,7 @@
 
     monthFilter.addEventListener("change", () => {
       selectedMonth = monthFilter.value;
-      renderTable();
+      render();
     });
 
     cancelButton.addEventListener("click", resetForm);
