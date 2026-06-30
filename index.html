@@ -228,8 +228,18 @@
     .btn.primary { background: var(--pink); color: #fff; }
     .btn.primary:hover { background: var(--pink-dark); }
     .btn.secondary { background: #e7f5f0; color: #2f6658; }
-    .logout-top { background: var(--pink); color: #fff; box-shadow: 0 8px 18px rgba(212, 88, 131, .16); }
-    .logout-top:hover { background: var(--pink-dark); }
+    .logout-top {
+      background: transparent !important;
+      color: #9b4164;
+      border: 1px solid #efb8ca;
+      box-shadow: none;
+    }
+    .logout-top:hover {
+      background: #ffeaf1 !important;
+      color: #8f3158;
+      border-color: #df8cac;
+      box-shadow: 0 8px 18px rgba(212, 88, 131, .12);
+    }
     .btn.danger { background: #fff0df; color: #9b4e22; }
     .btn:disabled { cursor: not-allowed; opacity: .55; }
     .status { min-height: 24px; margin: 10px 0 0; color: #9b4164; font-size: 14px; font-weight: 800; }
@@ -262,6 +272,11 @@
     .stat.visitors .stat-number { color: var(--blue); }
 
     .list-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 12px; }
+    .list-title { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .list-title h2 { margin: 0; line-height: 1; }
+    .list-head .btn { min-height: 38px; padding-top: 7px; padding-bottom: 7px; }
+    .month-filter { height: 38px; min-height: 38px; border: 1px solid #efd1da; border-radius: 12px; padding: 7px 12px; background: #fffafd; color: #5a3d49; font-weight: 900; outline: none; }
+    .month-filter:focus { border-color: var(--pink); box-shadow: 0 0 0 3px rgba(212, 88, 131, .14); }
     .table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid #f0d6de; border-radius: 14px; background: #fff; -webkit-overflow-scrolling: touch; }
     table { width: 100%; min-width: 620px; border-collapse: collapse; }
     th, td { padding: 12px; border-bottom: 1px solid #f4e2e8; text-align: left; vertical-align: middle; }
@@ -301,7 +316,11 @@
       .stats { grid-template-columns: 1fr; }
       .btn-row { grid-template-columns: 1fr; }
       .btn:not(.logout-top) { width: 100%; }
-      .list-head { display: grid; }
+      .list-head { display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; }
+      .list-title { display: flex; flex: 1 1 auto; min-width: 0; gap: 8px; align-items: center; }
+      .list-title h2 { flex: 0 0 auto; font-size: 16px; white-space: nowrap; }
+      .month-filter { flex: 1 1 104px; width: auto; min-width: 96px; height: 36px; padding: 6px 8px; font-size: 13px; }
+      .list-head .btn.danger { flex: 0 0 auto; width: auto; min-height: 36px; padding: 6px 9px; font-size: 13px; }
     }
   </style>
 </head>
@@ -334,7 +353,7 @@
         <div class="hero-copy">
           <div class="title-row">
             <h1>每日小帳本</h1>
-            <button class="btn secondary logout-top" id="logoutButton" type="button">登出</button>
+            <button class="btn logout-top" id="logoutButton" type="button">登出</button>
           </div>
           <p>記錄每天業績、報廢成本與來客數。</p>
         </div>
@@ -367,7 +386,7 @@
           </section>
 
           <section class="panel">
-            <div class="list-head"><h2>每日資料列表</h2><button class="btn danger" id="clearAll" type="button">清空全部資料</button></div>
+            <div class="list-head"><div class="list-title"><h2>每日資料列表</h2><select class="month-filter" id="monthFilter" aria-label="選擇月份"></select></div></div>
             <div class="empty" id="emptyState">還沒有資料，先新增今天的紀錄吧。</div>
             <div class="table-wrap">
               <table aria-label="每日資料列表">
@@ -405,11 +424,12 @@
     const formTitle = document.getElementById("formTitle");
     const submitButton = document.getElementById("submitButton");
     const cancelButton = document.getElementById("cancelButton");
-    const clearAllButton = document.getElementById("clearAll");
+    const monthFilter = document.getElementById("monthFilter");
     const tableBody = document.getElementById("tableBody");
     const emptyState = document.getElementById("emptyState");
     let entries = [];
     let sessionUser = null;
+    let selectedMonth = today().slice(0, 7);
 
     function today() { return new Date().toISOString().slice(0, 10); }
     function money(value) { return new Intl.NumberFormat("zh-TW", { style: "currency", currency: "TWD", maximumFractionDigits: 0 }).format(value || 0); }
@@ -447,12 +467,28 @@
       document.getElementById("avgVisitors").textContent = number(Math.round(data.avgVisitors));
     }
 
+    function monthLabel(monthText) {
+      const parts = monthText.split("-");
+      return Number(parts[0]) + " 年 " + Number(parts[1]) + " 月";
+    }
+
+    function renderMonthFilter() {
+      const months = Array.from(new Set([selectedMonth, ...entries.map((item) => item.entry_date.slice(0, 7))])).sort().reverse();
+      monthFilter.innerHTML = months.map((month) => {
+        const selected = month === selectedMonth ? " selected" : "";
+        return '<option value="' + month + '"' + selected + '>' + monthLabel(month) + '</option>';
+      }).join("");
+    }
+
     function renderTable() {
-      const sorted = [...entries].sort((a, b) => b.entry_date.localeCompare(a.entry_date));
+      renderMonthFilter();
+      const visibleEntries = entries.filter((item) => item.entry_date.slice(0, 7) === selectedMonth);
+      const sorted = [...visibleEntries].sort((a, b) => b.entry_date.localeCompare(a.entry_date));
       tableBody.innerHTML = sorted.map((item) => {
         return '<tr><td>' + item.entry_date + ' ' + weekday(item.entry_date).replace('週', '') + '</td><td class="num sales-text">' + money(item.sales) + '</td><td class="num waste-text">' + money(item.waste) + '</td><td class="num visitor-text">' + number(item.visitors) + ' 人</td><td><div class="actions"><button class="mini edit" type="button" data-action="edit" data-id="' + item.id + '">編輯</button><button class="mini delete" type="button" data-action="delete" data-id="' + item.id + '">刪除</button></div></td></tr>';
       }).join("");
-      emptyState.classList.toggle("show", entries.length === 0);
+      emptyState.textContent = visibleEntries.length === 0 ? monthLabel(selectedMonth) + " 還沒有資料。" : "";
+      emptyState.classList.toggle("show", visibleEntries.length === 0);
     }
 
     function render() { renderStats(); renderTable(); }
@@ -553,15 +589,10 @@
       }
     });
 
-    clearAllButton.addEventListener("click", async () => {
-      if (!entries.length || !supabaseClient) return;
-      if (!confirm("確定要清空全部資料嗎？")) return;
-      setLoading(true);
-      const { error } = await supabaseClient.from(TABLE_NAME).delete().eq("user_id", sessionUser.id);
-      setLoading(false);
-      if (error) return setStatus(error.message);
-      resetForm();
-      await loadEntries();
+
+    monthFilter.addEventListener("change", () => {
+      selectedMonth = monthFilter.value;
+      renderTable();
     });
 
     cancelButton.addEventListener("click", resetForm);
