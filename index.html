@@ -465,6 +465,10 @@
     }
     function money(value, digits = 0) { return new Intl.NumberFormat("zh-TW", { style: "currency", currency: "TWD", minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value || 0); }
     function number(value) { return new Intl.NumberFormat("zh-TW", { maximumFractionDigits: 0 }).format(value || 0); }
+    function floorTo(value, digits = 0) {
+      const multiplier = Math.pow(10, digits);
+      return Math.floor((Number(value) || 0) * multiplier) / multiplier;
+    }
     function weekday(dateText) { const day = new Date(dateText + "T00:00:00").getDay(); return ["週日", "週一", "週二", "週三", "週四", "週五", "週六"][day]; }
     function setStatus(message) { authStatus.textContent = message || ""; }
     function setLoading(isLoading) { document.querySelectorAll("button").forEach((button) => button.disabled = isLoading); }
@@ -502,7 +506,7 @@
       document.getElementById("totalSales").textContent = money(data.totalSales);
       document.getElementById("totalWaste").textContent = money(data.totalWaste, 2);
       document.getElementById("totalVisitors").textContent = number(data.totalVisitors);
-      document.getElementById("avgTicket").textContent = money(data.avgTicket);
+      document.getElementById("avgTicket").textContent = money(floorTo(data.avgTicket, 2), 2);
       document.getElementById("avgSales").textContent = money(data.avgSales);
       document.getElementById("avgWaste").textContent = money(data.avgWaste, 2);
       document.getElementById("avgVisitors").textContent = number(Math.round(data.avgVisitors));
@@ -526,7 +530,7 @@
       const visibleEntries = currentMonthEntries();
       const sorted = [...visibleEntries].sort((a, b) => b.entry_date.localeCompare(a.entry_date));
       tableBody.innerHTML = sorted.map((item) => {
-        const ticket = Number(item.visitors) ? Number(item.sales) / Number(item.visitors) : 0;
+        const ticket = Number(item.visitors) ? Math.floor(Number(item.sales) / Number(item.visitors)) : 0;
         return '<tr><td>' + item.entry_date + ' ' + weekday(item.entry_date).replace('週', '') + '</td><td class="num sales-text">' + money(item.sales) + '</td><td class="num waste-text">' + money(item.waste, 2) + '</td><td class="num visitor-text">' + number(item.visitors) + ' 人</td><td class="num sales-text">' + money(ticket) + '</td><td><div class="actions"><button class="mini edit" type="button" data-action="edit" data-id="' + item.id + '">編輯</button><button class="mini delete" type="button" data-action="delete" data-id="' + item.id + '">刪除</button></div></td></tr>';
       }).join("");
       emptyState.textContent = visibleEntries.length === 0 ? monthLabel(selectedMonth) + " 還沒有資料。" : "";
